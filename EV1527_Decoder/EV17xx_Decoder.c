@@ -17,19 +17,23 @@ Email : mohammad.mazarei@gmail.com
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "avr/io.h"
 #include "EV17xx_Decoder.h"
 #include <avr/interrupt.h>
+#include <avr/pgmspace.h>
+#include "avr/io.h"
 #include "Timer.h"
+
+
 
 #define IS_Sync_Start_Pulse(T1,T2)		(T2 > (T1*29) && T2 < (T1*32))
 #define Bit_IS_Zero(T1,T2)				(T2 > (T1*2)  && T2 < (T1*4))
 #define Bit_IS_One(T1,T2)				(T1 > (T2*2)  && T1 < (T2*4))
 
 volatile uint32_t    EV_Code = 0;
-uint8_t		Revice_Flag = 0;
+volatile uint8_t	 Revice_Flag = 0;
 
-uint32_t Bit_Shift[32] =
+
+const uint32_t Bit_Shift[32] PROGMEM =
 {
 	0x00000001,0x00000002,0x00000004,0x00000008,
 	0x00000010,0x00000020,0x00000040,0x00000080,
@@ -73,7 +77,7 @@ ISR(INT0_vect)	// interrupt Of Micro
 					}
 					else if(Bit_IS_One(Time_Rising,Time_Falling))
 					{
-						Receive_Code |= Bit_Shift[23-Bit_Index];
+						Receive_Code |= pgm_read_dword(&Bit_Shift[(23-Bit_Index)]);
 						Bit_Index++;
 					}
 					else

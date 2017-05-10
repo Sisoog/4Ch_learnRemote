@@ -18,44 +18,143 @@ Email : mohammad.mazarei@gmail.com
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
-#include <avr/io.h>
-#include <uart.h>
 #include <EV17xx_Decoder.h>
 #include <avr/interrupt.h>
+#include <eeprom_store.h>
 #include <util/delay.h>
+#include <avr/io.h>
+#include <uart.h>
+
+#define Key_Pin		3
+#define Key_PORT	PORTD
+#define Key_DDR		DDRD
+#define Key_PIN		PIND
+
+#define LED_Pin		4
+#define	LED_PORT	PORTC
+#define LED_DDR		DDRC
+
+#define IS_Press_Key()		((Key_PIN&_BV(Key_Pin))==0)
+#define LED_Tog()			LED_PORT ^= _BV(LED_Pin)
+#define LED_On()			LED_PORT |= _BV(LED_Pin)
+
+enum
+{
+	Nurmal = 0,
+	Learn,
+	Erase,
+};
+
+
 
 int main(void)
 {
 	uart_init();
-	DDRD |=(1<<3);
+	Key_DDR &=~_BV(Key_Pin); /*PORTD.3 As Input*/
+	Key_PORT |=_BV(Key_Pin); /*PORTD.3 Enable Pullup*/
+	LED_DDR |= _BV(LED_Pin);
+
 	// External Interrupt(s) initialization
 	// INT0: On
 	// INT0 Mode: Any change
-	// INT1: Off
-	// Interrupt on any change on pins PCINT0-7: Off
-	// Interrupt on any change on pins PCINT8-14: Off
-	// Interrupt on any change on pins PCINT16-23: Off
 	EICRA=(0<<ISC11) | (0<<ISC10) | (0<<ISC01) | (1<<ISC00);
 	EIMSK=(0<<INT1) | (1<<INT0);
 	EIFR=(0<<INTF1) | (1<<INTF0);
-	PCICR=(0<<PCIE2) | (0<<PCIE1) | (0<<PCIE0);
+
 
 	sei();
 
-
-
-	uint8_t Code[4];
-	printf("Abas Salam ");
+	printf("Zeus 4CH Remote Control\n");
+	printf("This Code Write By Mohammad Mazarei :)\n");
+	uint32_t Press_Time = 0;
+	uint32_t SysTime = 0;
+	uint32_t LEDTime = 0;
+	uint8_t  Work_Mode = Nurmal;
+	uint32_t Lcode = 0;
+	uint32_t CodeTime = 0;
 	while(1)
 	{
 
-		if(IS_Recive_Valid_Remote())
+		if(IS_Recive_Valid_Remote()) /*If Have Code For Remote*/
 		{
-			Get_Remote_Code(Code);
-			printf("---%X-%X-%X\r",Code[2],Code[1],Code[0]);
+			uint32_t Rcode = Get_Remote_Code_long();
+			CodeTime = SysTime;
+			if(Lcode!=Rcode)
+			{
+				Lcode = Rcode;
+
+				if(Work_Mode==Nurmal)
+				{
+					if(EE_ISValidCode(Rcode&0xFFFFFFF0)) /*If Valid Code*/
+					{
+						printf("Code Is Valid Action...\n");
+					}
+					else
+					{
+						printf("This Remote Not Valid!\n");
+					}
+				}
+				else if(Work_Mode==Learn)
+				{
+					if(!EE_ISValidCode(Rcode&0xFFFFFFF0)) /*If Not Have Code*/
+					{
+						printf("Learn This Remote...\n");
+						EE_StoreCode(Rcode&0xFFFFFFF0);
+					}
+					Work_Mode = Nurmal;
+				}
+			}
 		}
-				_delay_ms(10);
+		else
+		{
+			if((SysTime - CodeTime) > 500)
+			{
+				Lcode = 0; /*Reset Last Code*/
+			}
+		}
+
+		if(IS_Press_Key())
+		{
+			Press_Time++;
+		}
+		else
+		{
+			if(Press_Time>1000 && Press_Time<3000)
+			{
+				printf("Enter Learn Mode\n");
+				Work_Mode = Learn;
+			}
+			else if(Press_Time>5000 && Press_Time<15000)
+			{
+				printf("Enter Erase Mode\n");
+				LED_On();
+				EE_Format();
+				_delay_ms(3000);
+				LED_Tog();
+			}
+			Press_Time = 0;
+		}
+
+		/*Blink Control LED*/
+		if(Work_Mode==Nurmal)
+		{
+			if(LEDTime==0 || (SysTime-LEDTime) > 1000) /*Evry 1Sec*/
+			{
+				LEDTime = SysTime;
+				LED_Tog();
+			}
+		}
+		else if(Work_Mode==Learn)
+		{
+			if(LEDTime==0 || (SysTime-LEDTime) > 100) /*Evry 100 mili Sec*/
+			{
+				LEDTime = SysTime;
+				LED_Tog();
+			}
+		}
+
+		SysTime++;
+		_delay_ms(1);
 	}
 	return 0;
 }

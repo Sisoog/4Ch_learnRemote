@@ -17,12 +17,16 @@ Email : mohammad.mazarei@gmail.com
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef EV17XX_DECODER_H_
-#define EV17XX_DECODER_H_
+#ifndef EEPROM_STORE_H_
+#define EEPROM_STORE_H_
+#include <avr/eeprom.h>
 #include <stdint.h>
+#include <stdbool.h>
 
-uint8_t	IS_Recive_Valid_Remote(void);
-void Get_Remote_Code(uint8_t *Code);
-uint32_t Get_Remote_Code_long(void);
+#define EE_Total_Rec			100
 
-#endif /* EV17XX_DECODER_H_ */
+void EE_Format(void);
+void EE_StoreCode(uint32_t Code);
+bool EE_ISValidCode(uint32_t Code);
+
+#endif /* EEPROM_STORE_H_ */
