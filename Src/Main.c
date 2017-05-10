@@ -34,6 +34,13 @@ Email : mohammad.mazarei@gmail.com
 #define	LED_PORT	PORTC
 #define LED_DDR		DDRC
 
+#define CH0_Pin		0
+#define CH1_Pin		1
+#define CH2_Pin		2
+#define CH3_Pin		3
+#define CH_PORT		PORTC
+#define CH_DDR		DDRC
+
 #define IS_Press_Key()		((Key_PIN&_BV(Key_Pin))==0)
 #define LED_Tog()			LED_PORT ^= _BV(LED_Pin)
 #define LED_On()			LED_PORT |= _BV(LED_Pin)
@@ -53,6 +60,8 @@ int main(void)
 	Key_DDR &=~_BV(Key_Pin); /*PORTD.3 As Input*/
 	Key_PORT |=_BV(Key_Pin); /*PORTD.3 Enable Pullup*/
 	LED_DDR |= _BV(LED_Pin);
+	CH_DDR |= (_BV(CH0_Pin) | _BV(CH1_Pin) | _BV(CH2_Pin) | _BV(CH3_Pin));
+
 
 	// External Interrupt(s) initialization
 	// INT0: On
@@ -87,7 +96,17 @@ int main(void)
 				{
 					if(EE_ISValidCode(Rcode&0xFFFFFFF0)) /*If Valid Code*/
 					{
-						printf("Code Is Valid Action...\n");
+						uint8_t Rkey = Rcode&0xFF;
+						printf("Code Is Valid Action...%x\n",Rkey);
+
+						if(Rkey&1)
+							CH_PORT ^= _BV(CH0_Pin);
+						if(Rkey&2)
+							CH_PORT ^= _BV(CH1_Pin);
+						if(Rkey&4)
+							CH_PORT ^= _BV(CH2_Pin);
+						if(Rkey&8)
+							CH_PORT ^= _BV(CH3_Pin);
 					}
 					else
 					{

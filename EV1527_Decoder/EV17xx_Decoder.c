@@ -88,11 +88,30 @@ ISR(INT0_vect)	// interrupt Of Micro
 
 				}
 				else
-				{	// All Bit Recive
-					Bit_Index = 0;
-					Start_Sync = 0;
-					EV_Code = Receive_Code;
-					Revice_Flag = 1;
+				{
+					if(Bit_IS_Zero(Time_Rising,Time_Falling))
+					{
+						Bit_Index++;
+					}
+					else if(Bit_IS_One(Time_Rising,Time_Falling))
+					{
+						Receive_Code |= pgm_read_dword(&Bit_Shift[(23-Bit_Index)]);
+						Bit_Index++;
+					}
+					else
+					{
+						Start_Sync = 0;
+						Bit_Index = 0;
+					}
+
+					if(Start_Sync)
+					{
+						// All Bit Recive
+						Bit_Index = 0;
+						Start_Sync = 0;
+						EV_Code = Receive_Code;
+						Revice_Flag = 1;
+					}
 				}
 			}	// End of Start Sync Send
 		}
